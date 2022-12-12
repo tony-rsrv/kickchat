@@ -22,6 +22,7 @@
 			var showAvatars = true;
 			var showReactions = true;
 			var kickChatroomID;
+            var kickChannelID;
 			var kickChannelEmotes;
 				
 			var getUrlParameter = function getUrlParameter(sParam) {
@@ -138,7 +139,7 @@
 			}
 			
 			if(getUrlParameter('username')){
-				//await axios.get(`https://kick.com/api/v1/channels/${getUrlParameter('username').toLowerCase()}`)
+				let response1 = await axios.get(`https://kick.com/api/v1/channels/${getUrlParameter('username').toLowerCase()}`);
 				await axios.get(`https://kick.com/api/v1/${getUrlParameter('username').toLowerCase()}/chatroom`)
 				.then(function(response){
 					if(debug){
@@ -164,7 +165,7 @@
 						console.log(`----------`);
 						console.log(``);
 					}
-					
+					kickChannelID = response1.data.id;
 					kickChatroomID = response.data.chatroom.id;
 					kickChannelEmotes = response.data.emotes;
 				});
@@ -197,6 +198,13 @@
 					event: 'pusher:subscribe',
 					data: {
 						channel: 'chatrooms.' + kickChatroomID,
+						auth: ''
+					}
+				}));
+                kickConnection.send(JSON.stringify({
+					event: 'pusher:subscribe',
+					data: {
+						channel: 'channel.' + kickChannelID,
 						auth: ''
 					}
 				}));
@@ -233,9 +241,10 @@
                         break;
                     case "App\\Events\\UserMutedEvent":
                         let muted_username = data.mutedUser.muted_user.username;
+                        console.log(muted_username);
                         //iterate over the messagesMap, checking for the username in each key and delete each div with that ID
                         for (let [key, value] of messageMap) {
-                            if(value.toString() === muted_username.toString()){
+                            if(value.toString() === muted_username){
                                 $(`#` + key).remove();
                                 console.log(value);
                             }
