@@ -22,6 +22,7 @@
 			var showReactions = true;
 			var kickChatroomID;
 			var kickChannelEmotes;
+            var messageMap = new Map();
 				
 			var getUrlParameter = function getUrlParameter(sParam) {
 				var sPageURL = window.location.search.substring(1),
@@ -230,7 +231,14 @@
                         let deleted_kick_message_id = data.deletedMessage.id;
                         $(`#` + deleted_kick_message_id).remove();
                         break;
-
+                    case "App\\Events\\UserMutedEvent":
+                        let muted_user_id = data.mutedUser.muted_user_id;
+                        //iterate over the messagesMap, checking for the username in each key and delete each div with that ID
+                        for (let [key, value] of messagesMap) {
+                            if(value.includes(muted_user_id)){
+                                $(`#` + key).remove();
+                            }
+                        }
 					case "App\\Events\\ChatMessageSentEvent":
 						let kick_message_chatroom_id = data.message.chatroom_id;
 						let kick_message_id = data.message.id;
@@ -247,6 +255,7 @@
 						let kick_user_username = data.user.username;
 						let kick_user_role = data.user.role;	// Null for normal chatter. "Moderator" for channel mod, "Channel Host" for streamer.
 						let kick_user_id = data.user.id;
+                        messageMap.set(kick_message_id, kick_user_id);
 						
 						assignColor(kick_user_username);
 						
