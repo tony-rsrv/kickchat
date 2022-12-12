@@ -235,7 +235,7 @@
                         let muted_username = data.mutedUser.muted_user.username;
                         //iterate over the messagesMap, checking for the username in each key and delete each div with that ID
                         for (let [key, value] of messageMap) {
-                            if(value === muted_username){
+                            if(value.toString() === muted_username.toString()){
                                 $(`#` + key).remove();
                                 console.log(value);
                             }
