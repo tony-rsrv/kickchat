@@ -22,7 +22,7 @@
 			var showReactions = true;
 			var kickChatroomID;
 			var kickChannelEmotes;
-            var messageMap = new Map();
+            		let messageMap = new Map();
 				
 			var getUrlParameter = function getUrlParameter(sParam) {
 				var sPageURL = window.location.search.substring(1),
@@ -234,7 +234,7 @@
                     case "App\\Events\\UserMutedEvent":
                         let muted_user_id = data.mutedUser.muted_user_id;
                         //iterate over the messagesMap, checking for the username in each key and delete each div with that ID
-                        for (let [key, value] of messagesMap) {
+                        for (let [key, value] of messageMap) {
                             if(value.includes(muted_user_id)){
                                 $(`#` + key).remove();
                             }
