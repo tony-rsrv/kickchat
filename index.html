@@ -22,8 +22,9 @@
 			var showAvatars = true;
 			var showReactions = true;
 			var kickChatroomID;
-            var kickChannelID;
+			var kickChatChannelID;
 			var kickChannelEmotes;
+            var kickChannelID;
 				
 			var getUrlParameter = function getUrlParameter(sParam) {
 				var sPageURL = window.location.search.substring(1),
@@ -139,7 +140,11 @@
 			}
 			
 			if(getUrlParameter('username')){
-				let response1 = await axios.get(`https://kick.com/api/v1/channels/${getUrlParameter('username').toLowerCase()}`);
+				await axios.get(`https://kick.com/api/v1/channels/${getUrlParameter('username').toLowerCase()}`)
+                .then(function(response){
+                    console.log(`User id: ${response.data.id}`);
+                    kickChannelID = response.data.id;
+                });
 				await axios.get(`https://kick.com/api/v1/${getUrlParameter('username').toLowerCase()}/chatroom`)
 				.then(function(response){
 					if(debug){
@@ -165,8 +170,9 @@
 						console.log(`----------`);
 						console.log(``);
 					}
-					kickChannelID = response1.data.id;
+					
 					kickChatroomID = response.data.chatroom.id;
+					kickChatChannelID = response.data.chatroom.chatable_id;
 					kickChannelEmotes = response.data.emotes;
 				});
 			} else {
@@ -185,6 +191,7 @@
 
 					outputString = outputString.replace(new RegExp(escapedEmoteString, "g"), emoteImage);
 
+
 				});
 				return outputString;
 			}
@@ -201,7 +208,7 @@
 						auth: ''
 					}
 				}));
-                kickConnection.send(JSON.stringify({
+				kickConnection.send(JSON.stringify({
 					event: 'pusher:subscribe',
 					data: {
 						channel: 'channel.' + kickChannelID,
@@ -235,20 +242,22 @@
 						console.log('Listening to',kick.channel);
 						console.log(`--------------------`);
 						break;
-                    case "App\\Events\\ChatMessageDeletedEvent":
+						
+					case "App\\Events\\ChatMessageDeletedEvent":
                         let deleted_kick_message_id = data.deletedMessage.id;
                         $(`#` + deleted_kick_message_id).remove();
                         break;
+						
                     case "App\\Events\\UserMutedEvent":
                         let muted_username = data.mutedUser.muted_user.username;
-                        console.log(muted_username);
                         //iterate over the messagesMap, checking for the username in each key and delete each div with that ID
                         for (let [key, value] of messageMap) {
-                            if(value.toString() === muted_username){
+                            if(value.toString() === muted_username.toString()){
                                 $(`#` + key).remove();
                                 console.log(value);
                             }
                         }
+
 					case "App\\Events\\ChatMessageSentEvent":
 						let kick_message_chatroom_id = data.message.chatroom_id;
 						let kick_message_id = data.message.id;
@@ -265,7 +274,9 @@
 						let kick_user_username = data.user.username;
 						let kick_user_role = data.user.role;	// Null for normal chatter. "Moderator" for channel mod, "Channel Host" for streamer.
 						let kick_user_id = data.user.id;
-                        messageMap.set(kick_message_id, kick_user_username);
+						let kick_user_verified = data.user.verified;
+						
+						messageMap.set(kick_message_id, kick_user_username);
 						
 						assignColor(kick_user_username);
 						
@@ -275,19 +286,38 @@
 								
 								user_username += `<img class="emote" style="max-height: 16px !important; width:auto; border-radius:4px;" src="https://squadbot.dev/kick/icons/host.png" title="Channel Host">&nbsp;`;
 								
-								user_username += '<b>' + kick_user_username + '</b>:</span>&nbsp;';
+								user_username += '<b>' + kick_user_username + '</b>';
+								
+								if(kick_user_verified === true){
+									user_username += `&nbsp;<img class="emote" style="max-height: 16px !important; width:auto; border-radius:4px;" src="https://squadbot.dev/kick/icons/verified.png" title="Verified">`
+								}
+								
+								user_username += ':</span>&nbsp;';
 								break;
 
 							case "Moderator":
 								user_username = '&nbsp;<span class="username moderator">';
+
 								
 								user_username += `<img class="emote" style="max-height: 16px !important; width:auto; border-radius:4px;" src="https://squadbot.dev/kick/icons/moderator.png" title="Moderator">&nbsp;`;
 								
-								user_username += '<b>' + kick_user_username + '</b>:</span>&nbsp;';
+								user_username += '<b>' + kick_user_username + '</b>';
+								
+								if(kick_user_verified === true){
+									user_username += `&nbsp;<img class="emote" style="max-height: 16px !important; width:auto; border-radius:4px;" src="https://squadbot.dev/kick/icons/verified.png" title="Verified">`
+								}
+								
+								user_username += ':</span>&nbsp;';
 								break;
 
 							default:
-								user_username = `&nbsp;<span class="username" style="color:${getColor(kick_user_username)}">${kick_user_username}:</span>&nbsp;`;
+								user_username = `&nbsp;<span class="username" style="color:${getColor(kick_user_username)}">${kick_user_username}`;
+								
+								if(kick_user_verified === true){
+									user_username += `&nbsp;<img class="emote" style="max-height: 16px !important; width:auto; border-radius:4px;" src="https://squadbot.dev/kick/icons/verified.png" title="Verified">`
+								}
+								
+								user_username += `:</span>&nbsp;`;
 						}
 						
 						if(kick_user_avatar === null){
