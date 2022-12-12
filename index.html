@@ -16,7 +16,7 @@
 	<body>
 	
 	<script type="text/javascript">
-		let messageMap = new Map();
+        let messageMap = new Map();
 		$(document).ready(async function() {
 			var debug = true;
 			var showAvatars = true;
@@ -232,11 +232,12 @@
                         $(`#` + deleted_kick_message_id).remove();
                         break;
                     case "App\\Events\\UserMutedEvent":
-                        let muted_user_id = data.mutedUser.muted_user_id;
+                        let muted_username = data.mutedUser.muted_user.username;
                         //iterate over the messagesMap, checking for the username in each key and delete each div with that ID
                         for (let [key, value] of messageMap) {
-                            if(value.includes(muted_user_id)){
+                            if(value === muted_username){
                                 $(`#` + key).remove();
+                                console.log(value);
                             }
                         }
 					case "App\\Events\\ChatMessageSentEvent":
@@ -255,7 +256,7 @@
 						let kick_user_username = data.user.username;
 						let kick_user_role = data.user.role;	// Null for normal chatter. "Moderator" for channel mod, "Channel Host" for streamer.
 						let kick_user_id = data.user.id;
-                        messageMap.set(kick_message_id, kick_user_id);
+                        messageMap.set(kick_message_id, kick_user_username);
 						
 						assignColor(kick_user_username);
 						
