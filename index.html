@@ -16,13 +16,13 @@
 	<body>
 	
 	<script type="text/javascript">
+		let messageMap = new Map();
 		$(document).ready(async function() {
 			var debug = true;
 			var showAvatars = true;
 			var showReactions = true;
 			var kickChatroomID;
 			var kickChannelEmotes;
-            		let messageMap = new Map();
 				
 			var getUrlParameter = function getUrlParameter(sParam) {
 				var sPageURL = window.location.search.substring(1),
