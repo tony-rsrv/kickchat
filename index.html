@@ -1,0 +1,334 @@
+
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Kick Chat Overlay - Powered by SquadBot</title>
+		<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+		<script type="text/javascript">
+			var SquadBot_icon = "https://squadbot.dev/images/SquadBot.png";
+			var kick_icon = "https://squadbot.dev/images/kick.png";
+		</script>
+		<link rel="stylesheet" href="https://squadbot.subparsquad.com/assets/css/theta.css">
+	</head>
+	<body>
+	
+	<script type="text/javascript">
+		$(document).ready(async function() {
+			var debug = true;
+			var showAvatars = true;
+			var showReactions = true;
+			var kickChatroomID;
+			var kickChannelEmotes;
+				
+			var getUrlParameter = function getUrlParameter(sParam) {
+				var sPageURL = window.location.search.substring(1),
+					sURLVariables = sPageURL.split('&'),
+					sParameterName,
+					i;
+
+				for (i = 0; i < sURLVariables.length; i++) {
+					sParameterName = sURLVariables[i].split('=');
+
+					if (sParameterName[0] === sParam) {
+						return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+					}
+				}
+			};
+			
+			if(getUrlParameter('debug') === "false"){
+				debug = false;
+			} else {
+				debug = true;
+			}
+			
+			if(getUrlParameter('avatars') === "false"){
+				showAvatars = false;
+			} else {
+				showAvatars = true;
+			}
+			
+			if(getUrlParameter('reactions') === "false"){
+				showReactions = false;
+			} else {
+				showReactions = true;
+			}
+			
+/* START USER COLORS */
+			// Define an array of named colors
+			//const colors = ["darkslategray", "slategray", "silver", "darkgray", "gainsboro", "floralwhite", "white", "midnightblue", "darkslateblue", "slateblue", "blue", "darkblue", "mediumblue", "lightblue", "plum", "violet", "purple", "darkorchid", "mediumpurple", "thistle", "darkred", "firebrick", "crimson", "tomato", "orangered", "darkorange", "orange", "gold", "yellow", "yellowgreen", "olivedrab", "darkgreen", "green", "forestgreen", "seagreen"];
+			var colors = [];
+			
+			// define the two arrays and add some colors directly to them
+			const lightColors = ['white', 'lightyellow', 'lightblue', 'lightgreen', 'lightpink', 'lightgray', 'tomato', 'orange', 'gold', 'palegreen', 'lightseagreen', 'mediumaquamarine'];
+			const darkColors = ['black', 'darkred', 'darkblue', 'darkgreen', 'darkgray', 'darkmagenta', 'crimson', 'darkorange', 'olive', 'darkolivegreen', 'seagreen', 'teal'];
+			
+			if(getUrlParameter('darkmode') === "false"){
+				colors = darkColors;
+			} else {
+				colors = lightColors;
+			}
+
+			// Generate a random number between 0 and the length of the colors array
+			const randomIndex = Math.floor(Math.random() * colors.length);
+
+			// Select a random color from the colors array using the randomIndex
+			const randomColor = colors[randomIndex];
+			
+			// Define an empty array to store the user colors
+			var userColors = [];
+
+			// Define a function to assign a random color to a user
+			function assignColor(username) {
+			  // Check if the user is already in the userColors array
+			  const userExists = userColors.some(userColor => userColor.username === username);
+
+			  // If the user exists, do nothing
+			  if (userExists) {
+				return;
+			  } else {
+				  if(debug) console.log(`userColors: ${userColors}`);
+			  }
+
+			  // Generate a random number between 0 and the length of the colors array
+			  const randomIndex = Math.floor(Math.random() * colors.length);
+
+			  // Select a random color from the colors array using the randomIndex
+			  const randomColor = colors[randomIndex];
+
+			  // Create an object to store the user's name and color
+			  const userColor = {
+				username: username,
+				color: randomColor
+			  };
+
+			  // Add the userColor object to the userColors array
+			  userColors.push(userColor);
+
+			  if(debug) console.log(`${username} has been assigned ${randomColor}`);
+			}
+				
+			// Define a function to get the color associated with a username
+			function getColor(username) {
+			  if(debug) console.log(`Getting the color for ${username}`);
+			  // Check if the user is in the userColors array
+			  const userExists = userColors.some(userColor => userColor.username === username);
+
+			  // If the user exists, return their color
+			  if (userExists) {
+				  const response = userColors.find(userColor => userColor.username === username).color;
+				  if(debug) console.log(`${username} has been assigned ${response}`);
+				return response;
+			  } else {
+				  if(debug) console.log(`${username} hasn't been assigned a color yet.`);
+			  }
+
+			  // If the user doesn't exist, return null
+			  return null;
+			}
+
+/* END COLORS */
+			
+			if(debug){
+				$("body").append('<div class="chat_message"><img class="avatar" src="' + SquadBot_icon + '" /><span class="message">&nbsp;<span class="username app">SquadBot:</span>&nbsp;Welcome to Kick Chat overlay. Let us know if you have any suggestions or want to report a bug. If you want to hide this message, add `&debug=false` to the end of your url. More information in our discord:&nbsp;<a href="https://discord.gg/KS7AE4PbEZ" target="_new">SquadBot Discord</a></span></div>');
+				$("html, body").animate({ scrollTop: $(document).height() }, "fast");
+			}
+			
+			if(getUrlParameter('username')){
+				//await axios.get(`https://kick.com/api/v1/channels/${getUrlParameter('username').toLowerCase()}`)
+				await axios.get(`https://kick.com/api/v1/${getUrlParameter('username').toLowerCase()}/chatroom`)
+				.then(function(response){
+					if(debug){
+						console.log(`Kick API - /api/v1/${getUrlParameter('username').toLowerCase()}/chatroom`);
+						console.log(`id: ${response.data.id}`);
+						console.log(`user_id: ${response.data.user_id}`);
+						console.log(`name: ${response.data.name}`);
+						console.log(`playback_url: ${response.data.playback_url}`);
+						console.log(`role: ${response.data.role}`);
+						console.log(`muted_users: ${JSON.stringify(response.data.muted_users)}`);
+						console.log(`chatroom: {`);
+						console.log(`  id: ${response.data.chatroom.id}`);
+						console.log(`  chatable_type: ${response.data.chatroom.chatable_type}`);
+						console.log(`  chatable_id: ${response.data.chatroom.chatable_id}`);
+						console.log(`  created_at: ${response.data.chatroom.created_at}`);
+						console.log(`  updated_at: ${response.data.chatroom.updated_at}`);
+						console.log(`  chat_mode_old: ${response.data.chatroom.chat_mode_old}`);
+						console.log(`  chat_mode: ${response.data.chatroom.chat_mode}`);
+						console.log(`  slow_mode: ${response.data.chatroom.slow_mode}`);
+						console.log(`}`);
+						console.log(`emotes: ${JSON.stringify(response.data.emotes)}`);
+						console.log(``);
+						console.log(`----------`);
+						console.log(``);
+					}
+					
+					kickChatroomID = response.data.chatroom.id;
+					kickChannelEmotes = response.data.emotes;
+				});
+			} else {
+				$("body").append('<div class="chat_message"><img class="avatar" src="' + SquadBot_icon + '" /><span class="message">&nbsp;<span class="username app">SquadBot:</span>&nbsp;No channel defined. Add your Kick username to the user like this: https://squadbot.dev/kick/chat.html?username=squadbot</span></div>');
+				$("html, body").animate({ scrollTop: $(document).height() }, "fast");
+			}
+			
+			function replaceEmotes(str) {
+				let outputString = str;
+				kickChannelEmotes.forEach(emote => {
+					let emoteString = `[emote:${emote.id}]`;
+					let emoteImage = `<img class="emote" src="${emote.image.full}" alt="${emote.name}" title="${emote.name}">`;
+
+					// Escape any special characters in the emote string before creating the regular expression
+					let escapedEmoteString = emoteString.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+					outputString = outputString.replace(new RegExp(escapedEmoteString, "g"), emoteImage);
+
+				});
+				return outputString;
+			}
+			
+			var chatMsgHTML;
+			
+			var kickConnection = new WebSocket('wss://ws-us2.pusher.com/app/eb1d5f283081a78b932c?protocol=7&client=js&version=7.4.0&flash=false');
+
+			kickConnection.onopen = function() {
+				kickConnection.send(JSON.stringify({
+					event: 'pusher:subscribe',
+					data: {
+						channel: 'chatrooms.' + kickChatroomID,
+						auth: ''
+					}
+				}));
+			};
+
+			kickConnection.onmessage = async function(message) {
+				const kick = JSON.parse(message.data);
+				const data = JSON.parse(kick.data);
+				
+				if(debug){
+					console.log(``);
+					console.log(`kick:`);
+					console.log(kick);
+					console.log(``);
+					console.log(``);
+					console.log(`data:`);
+					console.log(data);
+					console.log(``);
+				}
+
+				switch(kick.event){
+					case "pusher:connection_established":
+						console.log('Connected to kick.com chat');
+						console.log(`--------------------`);
+						break;
+
+					case "pusher_internal:subscription_succeeded":
+						console.log('Listening to',kick.channel);
+						console.log(`--------------------`);
+						break;
+                    case "App\\Events\\ChatMessageDeletedEvent":
+                        let deleted_kick_message_id = data.deletedMessage.id;
+                        $(`#` + deleted_kick_message_id).remove();
+                        break;
+
+					case "App\\Events\\ChatMessageSentEvent":
+						let kick_message_chatroom_id = data.message.chatroom_id;
+						let kick_message_id = data.message.id;
+						let kick_message_timestamp = data.message.created_at;
+						let kick_message_is_info = data.message.is_info;
+
+						let kick_message_link_preview = data.message.link_preview;
+						let kick_message_message = data.message.message;
+						let kick_message_replied_to = data.message.replied_to;
+						let kick_message_role = data.message.role;
+						let kick_message_type = data.message.type;
+
+						let kick_user_avatar = data.user.profile_thumb;
+						let kick_user_username = data.user.username;
+						let kick_user_role = data.user.role;	// Null for normal chatter. "Moderator" for channel mod, "Channel Host" for streamer.
+						let kick_user_id = data.user.id;
+						
+						assignColor(kick_user_username);
+						
+						switch (kick_message_role){
+							case "Channel Host":
+								user_username = '&nbsp;<span class="username owner">';
+								
+								user_username += `<img class="emote" style="max-height: 16px !important; width:auto; border-radius:4px;" src="https://squadbot.dev/kick/icons/host.png" title="Channel Host">&nbsp;`;
+								
+								user_username += '<b>' + kick_user_username + '</b>:</span>&nbsp;';
+								break;
+
+							case "Moderator":
+								user_username = '&nbsp;<span class="username moderator">';
+								
+								user_username += `<img class="emote" style="max-height: 16px !important; width:auto; border-radius:4px;" src="https://squadbot.dev/kick/icons/moderator.png" title="Moderator">&nbsp;`;
+								
+								user_username += '<b>' + kick_user_username + '</b>:</span>&nbsp;';
+								break;
+
+							default:
+								user_username = `&nbsp;<span class="username" style="color:${getColor(kick_user_username)}">${kick_user_username}:</span>&nbsp;`;
+						}
+						
+						if(kick_user_avatar === null){
+							kick_user_avatar = kick_icon;
+						}
+						
+						if(debug){
+							console.log(`Checking for emotes in the message`);
+							console.log(kick_message_message);
+							console.log(`---`);
+						}
+						
+						kick_message_message = replaceEmotes(kick_message_message);
+						
+						if(debug){
+							console.log(kick_message_message);
+							console.log(`end-emote-search`);
+						}
+						
+						if(!showAvatars){
+							chatMsgHTML = '<div id="' + kick_message_id + '" class="chat_message"><span class="message" style="display: inline-block; vertical-align: middle;">&nbsp;' + user_username + kick_message_message + '</span></div>';
+						} else {
+							chatMsgHTML = '<div id="' + kick_message_id + '" class="chat_message"><img class="avatar" src="' + kick_user_avatar + '" /><span class="message" style="display:inline-block; vertical-align:middle;">&nbsp;' + user_username + kick_message_message + '</span></div>';
+						}
+						
+						console.log(user_username + kick_message_message);
+						
+						if(debug){
+							console.log(chatMsgHTML);
+						}
+						console.log(`--------------------`);
+						
+						$("body").append(chatMsgHTML);
+						$("html, body").animate({ scrollTop: $(document).height() }, "fast");
+						break;
+						
+					case "App\\Events\\ChatMessageReact":
+						let kick_reaction_chatroom_id = data.data.chatroom_id;
+						let kick_reaction_message_id = data.data.message_id;
+						let kick_reaction_reaction = data.data.reaction;
+						let kick_reaction_user_id = data.data.user_id;
+						
+						//chatMsgHTML = '<div class="chat_message"><span class="message"><i>' + kickGetUsernameFromID(kick_user_id) + '&nbsp; reacted with ' + kick_reaction + '</span></div>';
+						chatMsgHTML = '<div class="chat_message"><span class="message"><i>Kick User ID ' + kick_reaction_user_id + '&nbsp; reacted with ' + kick_reaction_reaction + '</span></div>';
+						
+						if(showReactions) {
+							$("body").append(chatMsgHTML);
+							$("html, body").animate({ scrollTop: $(document).height() }, "fast");
+						}
+						
+						console.log(`--------------------`);
+						break;
+
+					default:
+						console.log(`Uncaught Event. See above for more details.`);
+						console.log(`--------------------`);
+				}
+			}
+		});
+	
+	</script>
+</body>
+</html>
